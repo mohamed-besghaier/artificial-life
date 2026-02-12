@@ -88,18 +88,22 @@ class Person(Agent):
             params["recover_count"] = sum(1 for a in agents if a.type == RECOVER)
             params["iteration_counted"] = True
 
+        # Infected first production
         if params["nb_infected"] <= 10 :
             self.type = INFECTED
             self.age = 0
             params["nb_infected"] += 1
         
+        # Slow down the movement of the infected
         if self.type == INFECTED and random.random() < 0.5 :
             return
 
+        # Moving randomly
         delta_x, delta_y = random.choice([(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)])
         self.x = (self.x + delta_x) % self.dx
         self.y = (self.y + delta_y) % self.dy
 
+        # Sane production with a probability : 'P_reproduction'
         if random.random() < params["P_reproduction"] and grid[self.x, self.y] == EMPTY :
             for a in agents :
                 if a.type == SANE and a.running == False and (a.x == self.x and a.y == self.y) :
@@ -108,8 +112,8 @@ class Person(Agent):
                     self.running = True
                     self.age = 0
 
+        # Sane avoid infected persons
         if self.running :
-
             if self.type == SANE :
                 if grid[(self.x + 1)%dx, self.y] == INFECTED :
                     self.x = (self.x - 1)%dx
@@ -122,25 +126,29 @@ class Person(Agent):
 
                 elif grid[self.x, (self.y - 1)%dy] == INFECTED :
                     self.y = (self.y + 1)%dy
-
+        
+        # Sane got infected
         for a in agents :
-            if a.type == INFECTED and a.x == self.x and a.y == self.y :
+            if self.type == SANE and a.type == INFECTED and a.x == self.x and a.y == self.y :
                 self.type = INFECTED
-  
+
+        # Infected got recovered after 'recover' days
         if self.type == INFECTED and self.age > params["recover"] :
             self.type = RECOVER
 
+        # Sane got infected with a probability : 'P_sanesick'
         if self.type == SANE and random.random() < params["P_sanesick"] :
             self.type = INFECTED
 
         self.age += 1
 
+        # Person is dead after 'max_life' days
         if self.age > params["max_life"] :
             self.running = False
             grid[self.x, self.y] = EMPTY
             return
         
-        
+# Persons creation
 def make_agents(params):
     dx = params["dx"]
     dy = params["dy"]
@@ -166,6 +174,7 @@ def init_simulation(params):
 def ca_step(grid, newgrid):
     global params
 
+    # Show population of agents
     pygame.display.set_caption(f"Sane : {params['sane_count']} | Infected : {params['infected_count']} | Recover : {params['recover_count']}")
 
     params["iteration_counted"] = False
@@ -176,6 +185,7 @@ def ca_step(grid, newgrid):
         for y in range (dy):
             newgrid[x, y] = grid[x, y]
     
+    # Files updating
     with open("./TME03/SANE_Count.csv", "a", newline="") as file :
         writer = csv.writer(file)
         writer.writerow([params["iteration"], params["sane_count"]])
@@ -204,7 +214,7 @@ if __name__ == "__main__":
         dy=80, # CA height
         display_dx=800,
         display_dy=800,
-        title="Sane-Infected-Recover Model (template)", 
+        title="Sane-Infected-Recover Model", 
         verbose=False, # display stuff (can be used by user)
         fps=10 # steps per seconds (default: 60)
     )
